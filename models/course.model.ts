@@ -1,4 +1,4 @@
-import { Schema } from "mongoose";
+import mongoose, { Model, Schema } from "mongoose";
 import { Document } from "mongoose";
 
 interface IComment extends Document {
@@ -83,3 +83,65 @@ const courseDataSchema = new Schema<ICourseData>({
   suggestion: String,
   questions: [commentSchema],
 });
+
+const courseSchema = new Schema<ICourse>({
+  name: {
+    type: String,
+    required: true
+  },
+  description: {
+    type: String,
+    required: true
+  },
+  price: {
+    type: Number,
+    required: true
+  },
+  estimatePrice: {
+    type: Number,
+  },
+  thumbnail: {
+    public_id: {
+      type: String,
+      required: true
+    },
+    url: {
+      type: String,
+      required: true
+    }
+  },
+  tags: {
+    type: String,
+    required: true
+  },
+  level: {
+    type: String,
+    required: true
+  },
+  demoUrl: {
+    type: String,
+    required: true
+  },
+  benefits: [
+    { title: String }
+  ],
+  prerequisites: [
+    {
+      title: String
+    }
+  ],
+  reviews: [reviewSchema],
+  courseData: [courseDataSchema],
+  rating: {
+    type: Number,
+    default: 0
+  },
+  purchased: {
+    type: Number,
+    default: 0
+  }
+});
+
+const CourseModel: Model<ICourse> = mongoose.model("Course", courseSchema);
+
+export default CourseModel;
