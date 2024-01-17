@@ -4,6 +4,8 @@ import { asyncHandler } from "../middlewares/asyncHandler";
 import errorHandler from "../utils/ErrorHandler";
 import { createCourse } from "../services/course.service";
 import CourseModel from "../models/course.model";
+import { redis } from "../utils/redis";
+import mongoose from "mongoose";
 
 export const updateCourse = asyncHandler(async (request: Request, response: Response, next: NextFunction) => {
     try {
@@ -54,6 +56,100 @@ export const editCourse = asyncHandler(async (request: Request, response: Respon
             success: true,
             course
         })
+    } catch (error: any) {
+        return next(new errorHandler(error.message, 500))
+    }
+});
+
+export const getSingleCourse = asyncHandler(async (request: Request, response: Response, next: NextFunction) => {
+    try {
+        const courseId = request.params.id;
+
+        const isCacheExist = await redis.get(courseId);
+
+        if (isCacheExist) {
+            const course = JSON.parse(isCacheExist);
+            response.status(200).json({
+                success: true,
+                course
+            });
+        } else {
+            const course = await CourseModel.findById(courseId).select("-courseData.videoUrl -courseData.suggestion -courseData.questions -courseData.links");
+
+            await redis.set(courseId, JSON.stringify(course));
+
+            response.status(200).json({
+                success: true,
+                course
+            });
+        }
+    } catch (error: any) {
+        return next(new errorHandler(error.message, 500))
+    }
+});
+
+export const getAllCourses = asyncHandler(async (request: Request, response: Response, next: NextFunction) => {
+    try {
+        const isCacheExist = await redis.get("allCourses");
+        if (isCacheExist) {
+            const courses = JSON.parse(isCacheExist);
+            response.status(200).json({
+                success: true,
+                courses
+            });
+        } else {
+            const courses = await CourseModel.find().select("-courseData.videoUrl -courseData.suggestion -courseData.questions -courseData.links");
+            await redis.set("allCourses", JSON.stringify(courses));
+            response.status(200).json({
+                success: true,
+                courses
+            });
+        }
+    } catch (error: any) {
+        return next(new errorHandler(error.message, 500));
+    }
+});
+
+export const getCourseByUser = asyncHandler(async (request: Request, response: Response, next: NextFunction) => {
+    try {
+        const userCourseList = request.user?.courses;
+        const courseId = request.params.id;
+
+        const courseExists = userCourseList?.find((course: any) => course._id.toString() === courseId);
+
+        if (!courseExists) {
+            return next(new errorHandler("You are not eligible to access this course", 404));
+        }
+
+        const course = await CourseModel.findById(courseId);
+
+        const content = course?.courseData;
+
+        response.status(200).json({
+            success: true,
+            content
+        });
+    } catch (error: any) {
+        return next(new errorHandler(error.message, 500));
+    }
+});
+
+interface IAddQuestionData {
+    question: string;
+    courseId: string;
+    contentId: string;
+}
+
+export const addQuestion = asyncHandler(async (request: Request, response: Response, next: NextFunction) => {
+    try {
+        const { question, courseId, contentId }: IAddQuestionData = request.body;
+        const course = await CourseModel.findById(courseId);
+
+        if (!mongoose.Types.ObjectId.isValid(contentId)) {
+            return next(new errorHandler("Invald content Id", 400));
+        }
+
+        
     } catch (error: any) {
         return next(new errorHandler(error.message, 500))
     }
