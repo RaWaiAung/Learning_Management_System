@@ -116,6 +116,7 @@ export const getCourseByUser = asyncHandler(async (request: Request, response: R
         const courseId = request.params.id;
 
         const courseExists = userCourseList?.find((course: any) => course._id.toString() === courseId);
+        console.log(userCourseList);
 
         if (!courseExists) {
             return next(new errorHandler("You are not eligible to access this course", 404));
@@ -146,11 +147,83 @@ export const addQuestion = asyncHandler(async (request: Request, response: Respo
         const course = await CourseModel.findById(courseId);
 
         if (!mongoose.Types.ObjectId.isValid(contentId)) {
-            return next(new errorHandler("Invald content Id", 400));
+            return next(new errorHandler("Invalid content Id", 400));
         }
 
-        
+        const courseContent = course?.courseData.find((item: any) => item._id.equals(contentId));
+        if (!courseContent) {
+            return next(new errorHandler("Invalid content Id", 400));
+        }
+
+        const newQuestion: any = {
+            user: request.user,
+            question,
+            questionReplies: []
+        };
+
+        courseContent.questions.push(newQuestion);
+
+        await course?.save();
+
+        response.status(200).json({
+            success: true,
+            course
+        });
+
+    } catch (error: any) {
+        return next(new errorHandler(error.message, 500))
+    }
+});
+
+interface IAddAnswerData {
+    answer: string;
+    courseId: string;
+    contentId: string;
+    questionId: string;
+}
+
+export const addAnswer = asyncHandler(async (request: Request, response: Response, next: NextFunction) => {
+    try {
+        const { answer, questionId, courseId, contentId }: IAddAnswerData = request.body;
+        const course = await CourseModel.findById(courseId);
+
+        if (!mongoose.Types.ObjectId.isValid(contentId)) {
+            return next(new errorHandler("Invalid content Id", 400));
+        }
+
+        const courseContent = course?.courseData.find((item: any) => item._id.equals(contentId));
+        if (!courseContent) {
+            return next(new errorHandler("Invalid content Id", 400));
+        }
+
+        const question = courseContent.questions.find((question: any) => question._id.equals(questionId));
+
+
+        if (!question) {
+            return next(new errorHandler("Invalid question id", 400));
+        }
+
+        const newAnswer: any = {
+            user: request.user,
+            answer
+        }
+
+        question.questionReplies.push(newAnswer);
+
+        if(request.user?._id === question.user._id) {
+            // create notification
+        } else {
+
+        }
+        await course?.save();
+
+        response.status(200).json({
+            success: true,
+            course
+        });
+
     } catch (error: any) {
         return next(new errorHandler(error.message, 500))
     }
 })
+

@@ -47,7 +47,7 @@ export const isAutheticated = asyncHandler(
 
 export const role = (...roles: string[]) => {
   return (request: Request, response: Response, next: NextFunction) => {
-    if (roles.includes(request.user?.role || "")) {
+    if (!roles.includes(request.user?.role || "")) {
       return next(
         new errorHandler(
           `Role ${request.user?.role} is not allowed to access`,
